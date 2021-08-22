@@ -1,26 +1,30 @@
 declare-option -hidden str my_plugin_path %sh{ dirname "$kak_source" }
 
-declare-option -hidden str files_browse_buffer '*files-browse*'
+declare-option -hidden str files_browse_buffer 'files-browse'
 declare-option str files_markers "*/=>@|"
 declare-option str files_disabled_keys "i I a A r R p P d <a-d> ! <a-!> | <a-|> <gt> <a-gt> <lt> <a-lt>"
 declare-option bool files_show_hidden false
 declare-option bool files_directories_first true
 declare-option bool files_long_format false
-declare-option str files_ls_options "files_show_hidden files_directories_first files_long_format"
-declare-option str files_options_with_getters "files_show_hidden files_directories_first files_long_format files_cwd"
 declare-option str files_sorting "name"
+declare-option bool files_sorting_reverse false
+declare-option str files_ls_options "files_show_hidden files_directories_first files_long_format files_sorting files_sorting_reverse"
+declare-option str files_options_with_getters "files_show_hidden files_directories_first files_long_format files_cwd"
 declare-option str files_cwd
+declare-option int files_browse_buffer_counter 0
 
 define-command -hidden files-ls %{
     execute-keys %sh{
         cmd="$kak_opt_my_plugin_path/nice-ls.sh\
-        '$kak_opt_files_cwd' '$kak_opt_files_show_hidden' '$kak_opt_files_directories_first' '$kak_opt_files_sorting'"
+        '$kak_opt_files_cwd' '$kak_opt_files_show_hidden' '$kak_opt_files_directories_first' '$kak_opt_files_sorting' '$kak_opt_files_sorting_reverse'"
         echo "%%d!$cmd<ret>dgk"
     }
 }
 
-define-command files-browse -params 0..1 %{
-    edit -scratch %opt{files_browse_buffer}
+define-command files-new-browse -params 0..1 %{
+    edit -scratch "*%opt{files_browse_buffer}-%opt{files_browse_buffer_counter}*"
+    set buffer filetype %opt{files_browse_buffer}
+    set-option -add global files_browse_buffer_counter 1
     files-set-cwd %sh{
         [ -n "$1" ] && echo "$1" || pwd
     }
@@ -68,7 +72,7 @@ define-command -params 1 files-set-cwd %{
 
 define-command -hidden files-cd-parent %{ evaluate-commands %sh{
     current_dir="$(basename "$kak_opt_files_cwd")"
-    echo "files-browse '$(dirname "$kak_opt_files_cwd")'"
+    echo "files-set-cwd '$(dirname "$kak_opt_files_cwd")'"
     echo "try %{ execute-keys '/^$current_dir[$kak_opt_files_markers]{,2}<ret>gi' }"
 }}
 
@@ -78,14 +82,14 @@ define-command -hidden files-cd %{
         choice="$(echo "$kak_reg_dot" | grep -Po "[^$kak_opt_files_markers]+")"
         target="$kak_opt_files_cwd/$choice"
         if cd "$target"; then
-            echo "files-browse '$PWD'"
+            echo "files-set-cwd '$PWD'"
         else
             echo "edit '$target'"
         fi
     }
 }
 
-hook global BufCreate "\Q%opt{files_browse_buffer}\E" %{
+hook global BufSetOption "filetype=%opt{files_browse_buffer}" %{
     files-enable-hl
     files-disable-keys
     map buffer normal <ret> ': files-cd<ret>'
