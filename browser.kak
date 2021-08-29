@@ -1,6 +1,7 @@
 declare-option -hidden str my_plugin_path %sh{ dirname "$kak_source" }
 
 declare-option -hidden str files_browse_buffer 'files-browse'
+declare-option -hidden str files_selection_buffer 'files-selection'
 declare-option str files_markers "*/=>@|"
 declare-option str files_disabled_keys "i I a A r R p P d <a-d> ! <a-!> | <a-|> <gt> <a-gt> <lt> <a-lt>"
 declare-option bool files_show_hidden true
@@ -16,7 +17,7 @@ declare-option int files_browse_buffer_counter 0
 define-command -hidden files-ls %{
     execute-keys %sh{
         cmd="$kak_opt_my_plugin_path/nice-ls.sh\
-        '$kak_opt_files_cwd' '$kak_opt_files_show_hidden' '$kak_opt_files_directories_first' '$kak_opt_files_sorting' '$kak_opt_files_sorting_reverse'"
+        '$kak_opt_files_cwd' '$kak_opt_files_show_hidden' '$kak_opt_files_directories_first' '$kak_opt_files_sorting' '$kak_opt_files_sorting_reverse' '$kak_opt_files_long_format'"
         echo "%%d!$cmd<ret>dgk"
     }
 }
@@ -36,12 +37,14 @@ define-command -hidden files-disable-keys %{ evaluate-commands %sh{
     done
 }}
 
-define-command -hidden files-enable-hl %{
-    add-highlighter buffer/ regex '(?S)^(.*)/@?$' 1:blue
-    add-highlighter buffer/ regex '(?S)^(.*)\*@?$' 1:green
-    add-highlighter buffer/ regex '(?S)^(.*)\|@?$' 1:yellow
-    add-highlighter buffer/ regex '(?S)^(.*)\|=?$' 1:magenta
-    add-highlighter buffer/ regex '@' 0:cyan
+define-command -hidden files-create-hl %{
+    add-highlighter shared/files-filetypes group
+    add-highlighter shared/files-filetypes/ regex '(?S)^(.*)/@?$' 1:blue
+    add-highlighter shared/files-filetypes/ regex '(?S)^(.*)\*@?$' 1:green
+    add-highlighter shared/files-filetypes/ regex '(?S)^(.*)\|@?$' 1:yellow
+    add-highlighter shared/files-filetypes/ regex '(?S)^(.*)=@?$' 1:magenta
+    add-highlighter shared/files-filetypes/ regex '@' 0:cyan
+    add-highlighter shared/long-format regex "^(\S+\s+){8}" 0:Default
 }
 
 define-command -hidden files-generate-ls-option-setters %{ evaluate-commands %sh{
@@ -73,13 +76,17 @@ define-command -params 1 files-set-cwd %{
 define-command -hidden files-cd-parent %{ evaluate-commands %sh{
     current_dir="$(basename "$kak_opt_files_cwd")"
     echo "files-set-cwd '$(dirname "$kak_opt_files_cwd")'"
-    echo "try %{ execute-keys '/^$current_dir[$kak_opt_files_markers]{,2}<ret>gi' }"
+    echo "try %{ execute-keys '/\\\b$current_dir[$kak_opt_files_markers]{,2}<ret>gi' }"
 }}
 
 define-command -hidden files-cd %{
     execute-keys ";x_"
     evaluate-commands %sh{
-        choice="$(echo "$kak_reg_dot" | grep -Po "[^$kak_opt_files_markers]+")"
+        line="$kak_reg_dot"
+        if [ "$kak_opt_files_long_format" = true ]; then
+            line="$(echo "$line" | sed -E "s/^(\S+\s+){8}(.*)/\2/")"
+        fi
+        choice="$(echo "$line" | grep -Po "[^$kak_opt_files_markers]+")"
         target="$(realpath "$kak_opt_files_cwd/$choice")"
         if cd "$target"; then
             echo "files-set-cwd '$PWD'"
@@ -90,8 +97,9 @@ define-command -hidden files-cd %{
 }
 
 hook global BufSetOption "filetype=%opt{files_browse_buffer}" %{
-    files-enable-hl
-    files-disable-keys
+    add-highlighter buffer/ ref files-filetypes
+    add-highlighter buffer/ ref long-format
+    # files-disable-keys
     map buffer normal <ret> ': files-cd<ret>'
     map buffer normal <backspace> ': files-cd-parent<ret>'
     hook buffer NormalIdle ".*" %{
@@ -103,10 +111,14 @@ hook global BufSetOption "filetype=%opt{files_browse_buffer}" %{
             echo -n "options: "
             [ $kak_opt_files_show_hidden = "true" ] && echo -n "show_hidden "
             [ $kak_opt_files_directories_first = "true" ] && echo -n "dir_first "
-            echo 
+            echo
+            echo -n "format: "
+            [ $kak_opt_files_long_format = "true" ] && echo -n "long" || echo -n "short"
+            echo
         }
     }
 }
 
 files-generate-ls-option-setters
 files-generate-getters
+files-create-hl

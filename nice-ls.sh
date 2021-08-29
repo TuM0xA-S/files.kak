@@ -6,13 +6,10 @@ show_hidden="$2"
 directories_first="$3"
 sort_by="$4"
 reverse="$5"
+long_format="$6"
 
 if [ "$show_hidden" = "true" ]; then
     lscmd="$lscmd -A"
-fi
-
-if [ "$directories_first" = "true" ]; then
-    lscmd="$lscmd --group-directories-first"
 fi
 
 if [ "$directories_first" = "true" ]; then
@@ -27,10 +24,15 @@ if [ "$reverse" = "true" ]; then
     lscmd="$lscmd -r"
 fi
 
-paste -d '\n' <($lscmd -L "$1") <($lscmd "$1") | while read a && read b; do
-    if [ "$a" = "$b" ]; then
-        echo "$a"
-    else
-        echo "$a"$(echo "$b" | grep -o '.$')
+lscmdhelper="$lscmd"
+if [ "$long_format" = "true" ]; then
+    lscmd="$lscmd -l"
+fi
+
+paste -d '\n' <($lscmd -L "$1" | sed "1d") <($lscmdhelper "$1" | grep -o '.$') | while read a && read b; do
+    output="$a"
+    if [ "$b" = "@" ]; then
+        output="$output$b"
     fi
+    echo "$output"
 done
