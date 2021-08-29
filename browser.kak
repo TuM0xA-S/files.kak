@@ -3,7 +3,7 @@ declare-option -hidden str my_plugin_path %sh{ dirname "$kak_source" }
 declare-option -hidden str files_browse_buffer 'files-browse'
 declare-option str files_markers "*/=>@|"
 declare-option str files_disabled_keys "i I a A r R p P d <a-d> ! <a-!> | <a-|> <gt> <a-gt> <lt> <a-lt>"
-declare-option bool files_show_hidden false
+declare-option bool files_show_hidden true
 declare-option bool files_directories_first true
 declare-option bool files_long_format false
 declare-option str files_sorting "name"
@@ -80,7 +80,7 @@ define-command -hidden files-cd %{
     execute-keys ";x_"
     evaluate-commands %sh{
         choice="$(echo "$kak_reg_dot" | grep -Po "[^$kak_opt_files_markers]+")"
-        target="$kak_opt_files_cwd/$choice"
+        target="$(realpath "$kak_opt_files_cwd/$choice")"
         if cd "$target"; then
             echo "files-set-cwd '$PWD'"
         else
@@ -94,6 +94,18 @@ hook global BufSetOption "filetype=%opt{files_browse_buffer}" %{
     files-disable-keys
     map buffer normal <ret> ': files-cd<ret>'
     map buffer normal <backspace> ': files-cd-parent<ret>'
+    hook buffer NormalIdle ".*" %{
+        info -title %opt{files_browse_buffer} %sh{
+            printf "%-20s\n" "$kak_opt_files_cwd"
+            echo -n "sorting: $kak_opt_files_sorting"
+            [  $kak_opt_files_sorting_reverse = "true" ] && echo -n "(rev)"
+            echo
+            echo -n "options: "
+            [ $kak_opt_files_show_hidden = "true" ] && echo -n "show_hidden "
+            [ $kak_opt_files_directories_first = "true" ] && echo -n "dir_first "
+            echo 
+        }
+    }
 }
 
 files-generate-ls-option-setters
