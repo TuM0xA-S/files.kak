@@ -11,6 +11,7 @@ declare-option str files_sorting "name"
 declare-option bool files_sorting_reverse false
 declare-option str files_ls_options "files_show_hidden files_directories_first files_long_format files_sorting files_sorting_reverse"
 declare-option str files_options_with_getters "files_show_hidden files_directories_first files_long_format files_cwd"
+declare-option str files_togglable_options "files_show_hidden files_directories_first files_long_format"
 declare-option str files_cwd
 declare-option int files_browse_buffer_counter 0
 
@@ -44,7 +45,7 @@ define-command -hidden files-create-hl %{
     add-highlighter shared/files-filetypes/ regex '(?S)^(.*)\|@?$' 1:yellow
     add-highlighter shared/files-filetypes/ regex '(?S)^(.*)=@?$' 1:magenta
     add-highlighter shared/files-filetypes/ regex '@' 0:cyan
-    add-highlighter shared/long-format regex "^(\S+\s+){8}" 0:Default
+    add-highlighter shared/long-format regex "(?S)^(\S+ +){8}" 0:Default
 }
 
 define-command -hidden files-generate-ls-option-setters %{ evaluate-commands %sh{
@@ -59,6 +60,20 @@ define-command -hidden files-generate-ls-option-setters %{ evaluate-commands %sh
                 echo \"try %{ execute-keys '/^\Q\$current_line\E$<ret>gi' }\"
             }
         }"
+    done
+}}
+
+define-command -hidden files-generate-ls-option-togglers %{ evaluate-commands %sh{
+    for opt in $kak_opt_files_togglable_options; do
+        echo "\
+        define-command files-toggle-$opt %{ evaluate-commands %sh{
+            if [ \"\$kak_opt_$opt\" = true ]; then
+                echo files-set-$opt false
+            else
+                echo files-set-$opt true
+            fi
+        }}
+        "
     done
 }}
 
@@ -84,10 +99,15 @@ define-command -hidden files-cd %{
     evaluate-commands %sh{
         line="$kak_reg_dot"
         if [ "$kak_opt_files_long_format" = true ]; then
-            line="$(echo "$line" | sed -E "s/^(\S+\s+){8}(.*)/\2/")"
+            line="$(echo "$line" | sed -E "s/^(\S+ +){8}(.*)/\2/")"
         fi
         choice="$(echo "$line" | grep -Po "[^$kak_opt_files_markers]+")"
-        target="$(realpath "$kak_opt_files_cwd/$choice")"
+        cwd="$kak_opt_files_cwd"
+        if [ "$cwd" != "/" ]; then
+            target="$kak_opt_files_cwd/$choice"
+        else
+            target="/$choice"
+        fi
         if cd "$target"; then
             echo "files-set-cwd '$PWD'"
         else
@@ -105,6 +125,10 @@ hook global BufSetOption "filetype=%opt{files_browse_buffer}" %{
     hook buffer NormalIdle ".*" %{
         info -title %opt{files_browse_buffer} %sh{
             printf "%-20s\n" "$kak_opt_files_cwd"
+            rp="$(realpath "$kak_opt_files_cwd")"
+            if [ "$rp" != "$kak_opt_files_cwd" ]; then
+                echo "realpath: $rp"
+            fi
             echo -n "sorting: $kak_opt_files_sorting"
             [  $kak_opt_files_sorting_reverse = "true" ] && echo -n "(rev)"
             echo
@@ -119,6 +143,11 @@ hook global BufSetOption "filetype=%opt{files_browse_buffer}" %{
     }
 }
 
+define-command files-browse-realpath %{
+    set-option buffer files_cwd %sh{echo "$(realpath "$kak_opt_files_cwd")"}
+}
+
 files-generate-ls-option-setters
 files-generate-getters
 files-create-hl
+files-generate-ls-option-togglers

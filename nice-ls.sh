@@ -27,9 +27,10 @@ fi
 lscmdhelper="$lscmd"
 if [ "$long_format" = "true" ]; then
     lscmd="$lscmd -l"
+    sedcmd="1d"
 fi
 
-paste -d '\n' <($lscmd -L "$1" | sed "1d") <($lscmdhelper "$1" | grep -o '.$') | while read a && read b; do
+paste -d '\n' <($lscmd -L "$1" | sed "$sedcmd") <($lscmdhelper "$1" | grep -o '.$') | while read a && read b; do
     output="$a"
     if [ "$b" = "@" ]; then
         output="$output$b"
