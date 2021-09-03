@@ -147,7 +147,47 @@ define-command files-browse-realpath %{
     set-option buffer files_cwd %sh{echo "$(realpath "$kak_opt_files_cwd")"}
 }
 
+define-command files-cd-server-to-browse %{
+    change-directory %opt{files_cwd} 
+}
+
+define-command files-cd-browse-to-server %{
+    files-set-cwd %sh{pwd}
+}
+
+define-command files-select-current-entry %{
+    execute-keys ";x_"
+    try %{
+        execute-keys "s(\S+ +){8}<ret>"
+        execute-keys "l"
+        execute-keys "<a-l>"
+    }
+    execute-keys "s\A[^%opt{files_markers}]+<ret>"
+}
+
+map global normal . ":files-browse-add-selection<ret>"
+
+define-command files-browse-add-selection %{ evaluate-commands -draft %{
+    files-select-current-entry
+    execute-keys '"ey'
+    set-register d %opt{files_cwd}
+    edit -scratch "*%opt{files_selection_buffer}*"
+    execute-keys "gj"
+    try %{
+        execute-keys "x<a-k>^.+$<ret>"
+        execute-keys "o<esc>"
+    }
+    execute-keys '"dP'
+    execute-keys 'ghgl'
+    try %{
+        execute-keys '<a-K>/<ret>'
+        execute-keys 'li/<esc>'
+    }
+    execute-keys l
+    execute-keys '"eP'
+}}
+
 files-generate-ls-option-setters
-files-generate-getters
+# files-generate-getters
 files-create-hl
 files-generate-ls-option-togglers
