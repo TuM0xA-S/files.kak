@@ -1,6 +1,6 @@
 declare-option -hidden str my_plugin_path %sh{ dirname "$kak_source" }
 
-declare-option -hidden str files_browse_buffer 'files-browse'
+declare-option -hidden str files_browse_buffer 'files-browser'
 declare-option -hidden str files_selection_buffer 'files-selection'
 declare-option str files_markers "*/=>@|"
 declare-option str files_disabled_keys "i I a A r R p P d <a-d> ! <a-!> | <a-|> <gt> <a-gt> <lt> <a-lt>"
@@ -23,7 +23,7 @@ define-command -hidden files-ls %{
     }
 }
 
-define-command files-new-browse -params 0..1 %{
+define-command files-new-browser -params 0..1 %{
     edit -scratch "*%opt{files_browse_buffer}-%opt{files_browse_buffer_counter}*"
     set buffer filetype %opt{files_browse_buffer}
     set-option -add global files_browse_buffer_counter 1
@@ -48,17 +48,21 @@ define-command -hidden files-create-hl %{
     add-highlighter shared/long-format regex "(?S)^(\S+ +){8}" 0:Default
 }
 
+define-command files-redraw-browser %{
+    execute-keys ';x_'
+    evaluate-commands %sh{
+        current_line="$kak_reg_dot"
+        echo 'files-ls'
+        echo "try %{ execute-keys '/^\Q$current_line\E$<ret>gi' }"
+    }
+}
+
 define-command -hidden files-generate-ls-option-setters %{ evaluate-commands %sh{
     for opt in $kak_opt_files_ls_options; do
         echo "\
         define-command -params 1 files-set-$opt %{
             set-option buffer $opt %arg{1}
-            execute-keys ';x_'
-            evaluate-commands %sh{
-                current_line=\"\$kak_reg_dot\"
-                echo 'files-ls'
-                echo \"try %{ execute-keys '/^\Q\$current_line\E$<ret>gi' }\"
-            }
+            files-redraw-browser
         }"
     done
 }}
@@ -143,16 +147,20 @@ hook global BufSetOption "filetype=%opt{files_browse_buffer}" %{
     }
 }
 
-define-command files-browse-realpath %{
+define-command files-cd-browser-to-realpath %{
     set-option buffer files_cwd %sh{echo "$(realpath "$kak_opt_files_cwd")"}
 }
 
-define-command files-cd-server-to-browse %{
+define-command files-cd-server-to-browser %{
     change-directory %opt{files_cwd} 
 }
 
-define-command files-cd-browse-to-server %{
+define-command files-cd-browser-to-server %{
     files-set-cwd %sh{pwd}
+}
+
+define-command files-focus-selections %{
+    edit -scratch "*%opt{files_selection_buffer}*"
 }
 
 define-command files-select-current-entry %{
@@ -165,13 +173,13 @@ define-command files-select-current-entry %{
     execute-keys "s\A[^%opt{files_markers}]+<ret>"
 }
 
-map global normal . ":files-browse-add-selection<ret>"
+map global normal . ":files-add-entry-to-selection<ret>"
 
-define-command files-browse-add-selection %{ evaluate-commands -draft %{
+define-command files-add-entry-to-selection %{ evaluate-commands -draft %{
     files-select-current-entry
     execute-keys '"ey'
     set-register d %opt{files_cwd}
-    edit -scratch "*%opt{files_selection_buffer}*"
+    files-focus-selections
     execute-keys "gj"
     try %{
         execute-keys "x<a-k>^.+$<ret>"
@@ -186,6 +194,12 @@ define-command files-browse-add-selection %{ evaluate-commands -draft %{
     execute-keys l
     execute-keys '"eP'
 }}
+
+define-command files-commit-operations %{
+    nop %sh{
+        eval "$kak_reg_dot"
+    }
+}
 
 files-generate-ls-option-setters
 # files-generate-getters
