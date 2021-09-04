@@ -49,12 +49,16 @@ define-command -hidden files-create-hl %{
 }
 
 define-command files-redraw-browser %{
-    execute-keys ';x_'
-    evaluate-commands %sh{
-        current_line="$kak_reg_dot"
-        echo 'files-ls'
-        echo "try %{ execute-keys '/^\Q$current_line\E$<ret>gi' }"
+    files-select-current-entry
+    evaluate-commands -save-regs e %{
+        set-register e %reg{.}
+        files-ls
+        files-focus-entry %reg{e}
     }
+}
+
+define-command files-focus-entry -params 1 %{
+    try %{ execute-keys "/\b\Q%arg{1}\E\b<ret>gi" }
 }
 
 define-command -hidden files-generate-ls-option-setters %{ evaluate-commands %sh{
@@ -95,18 +99,14 @@ define-command -params 1 files-set-cwd %{
 define-command -hidden files-cd-parent %{ evaluate-commands %sh{
     current_dir="$(basename "$kak_opt_files_cwd")"
     echo "files-set-cwd '$(dirname "$kak_opt_files_cwd")'"
-    echo "try %{ execute-keys '/\\\b$current_dir[$kak_opt_files_markers]{,2}<ret>gi' }"
+    echo "files-focus-entry '$current_dir'"
 }}
 
 define-command -hidden files-cd %{
-    execute-keys ";x_"
+    files-select-current-entry
     evaluate-commands %sh{
-        line="$kak_reg_dot"
-        if [ "$kak_opt_files_long_format" = true ]; then
-            line="$(echo "$line" | sed -E "s/^(\S+ +){8}(.*)/\2/")"
-        fi
-        choice="$(echo "$line" | grep -Po "[^$kak_opt_files_markers]+")"
         cwd="$kak_opt_files_cwd"
+        choice="$kak_reg_dot"
         if [ "$cwd" != "/" ]; then
             target="$kak_opt_files_cwd/$choice"
         else
@@ -175,7 +175,7 @@ define-command files-select-current-entry %{
 
 map global normal . ":files-add-entry-to-selection<ret>"
 
-define-command files-add-entry-to-selection %{ evaluate-commands -draft %{
+define-command files-add-entry-to-selection %{ evaluate-commands -draft -save-regs ed %{
     files-select-current-entry
     execute-keys '"ey'
     set-register d %opt{files_cwd}
