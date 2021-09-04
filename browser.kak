@@ -103,15 +103,9 @@ define-command -hidden files-cd-parent %{ evaluate-commands %sh{
 }}
 
 define-command -hidden files-cd %{
-    files-select-current-entry
+    files-full-path-of-choice
     evaluate-commands %sh{
-        cwd="$kak_opt_files_cwd"
-        choice="$kak_reg_dot"
-        if [ "$cwd" != "/" ]; then
-            target="$kak_opt_files_cwd/$choice"
-        else
-            target="/$choice"
-        fi
+        target="$kak_reg_r"
         if cd "$target"; then
             echo "files-set-cwd '$PWD'"
         else
@@ -124,8 +118,6 @@ hook global BufSetOption "filetype=%opt{files_browse_buffer}" %{
     add-highlighter buffer/ ref files-filetypes
     add-highlighter buffer/ ref long-format
     # files-disable-keys
-    map buffer normal <ret> ': files-cd<ret>'
-    map buffer normal <backspace> ': files-cd-parent<ret>'
     hook buffer NormalIdle ".*" %{
         info -title %opt{files_browse_buffer} %sh{
             printf "%-20s\n" "$kak_opt_files_cwd"
@@ -173,27 +165,38 @@ define-command files-select-current-entry %{
     execute-keys "s\A[^%opt{files_markers}]+<ret>"
 }
 
-map global normal . ":files-add-entry-to-selection<ret>"
-
-define-command files-add-entry-to-selection %{ evaluate-commands -draft -save-regs ed %{
-    files-select-current-entry
-    execute-keys '"ey'
-    set-register d %opt{files_cwd}
+define-command files-add-to-selection -params 1 %{ evaluate-commands -draft %{
     files-focus-selections
     execute-keys "gj"
     try %{
         execute-keys "x<a-k>^.+$<ret>"
         execute-keys "o<esc>"
     }
-    execute-keys '"dP'
-    execute-keys 'ghgl'
-    try %{
-        execute-keys '<a-K>/<ret>'
-        execute-keys 'li/<esc>'
-    }
-    execute-keys l
-    execute-keys '"eP'
+    execute-keys "i%arg{1}<esc>"
 }}
+
+define-command files-full-path-of-choice %{
+    files-select-current-entry
+    evaluate-commands %sh{ 
+        cwd="$kak_opt_files_cwd"
+        choice="$kak_reg_dot"
+        if [ "$cwd" != "/" ]; then
+            target="$kak_opt_files_cwd/$choice"
+        else
+            target="/$choice"
+        fi
+        echo "set-register r '$target'"
+    }
+}
+
+define-command files-add-entry-to-selection %{ evaluate-commands -draft -save-regs r %{
+    files-full-path-of-choice
+    files-add-to-selection %reg{r}
+}}
+
+define-command files-add-cwd-to-selection %{
+    files-add-to-selection %opt{files_cwd}
+}
 
 define-command files-commit-operations %{
     nop %sh{
