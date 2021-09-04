@@ -172,7 +172,9 @@ define-command files-add-to-selection -params 1 %{ evaluate-commands -draft %{
         execute-keys "x<a-k>^.+$<ret>"
         execute-keys "o<esc>"
     }
-    execute-keys "i%arg{1}<esc>"
+    execute-keys "i%arg{1}"
+    execute-keys %sh{ [ -d "$1" ] && echo "/" }
+    execute-keys "<esc>"
 }}
 
 define-command files-full-path-of-choice %{
