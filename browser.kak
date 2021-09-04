@@ -15,7 +15,7 @@ declare-option str files_togglable_options "files_show_hidden files_directories_
 declare-option str files_cwd
 declare-option int files_browse_buffer_counter 0
 
-define-command -hidden files-ls %{
+define-command files-ls %{
     execute-keys %sh{
         cmd="$kak_opt_my_plugin_path/nice-ls.sh\
         '$kak_opt_files_cwd' '$kak_opt_files_show_hidden' '$kak_opt_files_directories_first' '$kak_opt_files_sorting' '$kak_opt_files_sorting_reverse' '$kak_opt_files_long_format'"
@@ -45,7 +45,7 @@ define-command -hidden files-create-hl %{
     add-highlighter shared/files-filetypes/ regex '(?S)^(.*)\|@?$' 1:yellow
     add-highlighter shared/files-filetypes/ regex '(?S)^(.*)=@?$' 1:magenta
     add-highlighter shared/files-filetypes/ regex '@' 0:cyan
-    add-highlighter shared/long-format regex "(?S)^(\S+ +){8}" 0:Default
+    add-highlighter shared/long-format regex "(?S)^(\S+ +){7}" 0:Default
 }
 
 define-command files-redraw-browser %{
@@ -58,7 +58,7 @@ define-command files-redraw-browser %{
 }
 
 define-command files-focus-entry -params 1 %{
-    try %{ execute-keys "/\b\Q%arg{1}\E\b<ret>gi" }
+    try %{ execute-keys "/\Q%arg{1}\E<ret>gi" }
 }
 
 define-command -hidden files-generate-ls-option-setters %{ evaluate-commands %sh{
@@ -158,7 +158,7 @@ define-command files-focus-selections %{
 define-command files-select-current-entry %{
     execute-keys ";x_"
     try %{
-        execute-keys "s(\S+ +){8}<ret>"
+        execute-keys "s(\S+ +){7}<ret>"
         execute-keys "l"
         execute-keys "<a-l>"
     }

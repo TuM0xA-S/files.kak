@@ -1,6 +1,6 @@
 #! /bin/bash
 
-lscmd="ls -F --dereference-command-line-symlink-to-dir"
+lscmd="ls -hGF --dereference-command-line-symlink-to-dir"
 cwd="$1"
 show_hidden="$2"
 directories_first="$3"
