@@ -16,7 +16,7 @@ declare-option str files_cwd
 declare-option int files_browse_buffer_counter 0
 declare-option line-specs files_long_format_gutter
 
-define-command files-ls %{
+define-command -hidden files-ls %{
     execute-keys %sh{
         cmd="$kak_opt_files_plugin_path/nice-ls.sh\
         '$kak_opt_files_cwd' '$kak_opt_files_show_hidden' '$kak_opt_files_directories_first' '$kak_opt_files_sorting' '$kak_opt_files_sorting_reverse'"
@@ -64,7 +64,7 @@ define-command files-redraw-browser %{
     }
 }
 
-define-command files-focus-entry -params 1 %{
+define-command -hidden files-focus-entry -params 1 %{
     try %{ execute-keys "/^\Q%arg{1}\E[%opt{files_markers}]*$<ret>gi" }
 }
 
@@ -162,12 +162,12 @@ define-command files-focus-selections %{
     edit -scratch "*%opt{files_selection_buffer}*"
 }
 
-define-command files-select-current-entry %{
+define-command -hidden files-select-current-entry %{
     execute-keys ";x_"
     execute-keys "s\A[^%opt{files_markers}]+<ret>"
 }
 
-define-command files-add-to-selection -params 1 %{ evaluate-commands -draft %{
+define-command -hidden files-add-to-selection -params 1 %{ evaluate-commands -draft %{
     files-focus-selections
     execute-keys "gj"
     try %{
@@ -180,7 +180,7 @@ define-command files-add-to-selection -params 1 %{ evaluate-commands -draft %{
     evaluate-commands %sh{ $kak_opt_files_auto_quoting && echo "execute-keys I'<esc>A'<esc>" }
 }}
 
-define-command files-full-path-of-choice %{
+define-command -hidden files-full-path-of-choice %{
     files-select-current-entry
     evaluate-commands %sh{ 
         cwd="$kak_opt_files_cwd"
