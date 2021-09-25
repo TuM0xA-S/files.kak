@@ -1,7 +1,7 @@
-declare-option -hidden str my_plugin_path %sh{ dirname "$kak_source" }
+declare-option -hidden str files_plugin_path %sh{ dirname "$kak_source" }
 
 declare-option -hidden str files_browse_buffer 'files-browser'
-declare-option -hidden str files_selection_buffer 'files-selection'
+declare-option -hidden str files_selection_buffer 'files-selections'
 declare-option str files_markers "*/=>@|"
 declare-option str files_disabled_keys "i I a A r R p P d <a-d> ! <a-!> | <a-|> <gt> <a-gt> <lt> <a-lt>"
 declare-option bool files_show_hidden true
@@ -9,16 +9,16 @@ declare-option bool files_directories_first true
 declare-option bool files_long_format false
 declare-option str files_sorting "name"
 declare-option bool files_sorting_reverse false
-declare-option str files_options_with_setters "files_show_hidden files_directories_first files_long_format files_sorting files_sorting_reverse"
+declare-option str files_options_with_setters "show_hidden directories_first long_format sorting sorting_reverse"
 declare-option bool files_auto_quoting false
-declare-option str files_togglable_options "files_show_hidden files_directories_first files_long_format"
+declare-option str files_togglable_options "show_hidden directories_first long_format"
 declare-option str files_cwd
 declare-option int files_browse_buffer_counter 0
 declare-option line-specs files_long_format_gutter
 
 define-command files-ls %{
     execute-keys %sh{
-        cmd="$kak_opt_my_plugin_path/nice-ls.sh\
+        cmd="$kak_opt_files_plugin_path/nice-ls.sh\
         '$kak_opt_files_cwd' '$kak_opt_files_show_hidden' '$kak_opt_files_directories_first' '$kak_opt_files_sorting' '$kak_opt_files_sorting_reverse'"
         echo "%%d!$cmd<ret>dgk"
     }
@@ -72,7 +72,7 @@ define-command -hidden files-generate-ls-option-setters %{ evaluate-commands %sh
     for opt in $kak_opt_files_options_with_setters; do
         echo "\
         define-command -params 1 files-set-$opt %{
-            set-option buffer $opt %arg{1}
+            set-option buffer files_$opt %arg{1}
             files-redraw-browser
         }"
     done
@@ -82,7 +82,7 @@ define-command -hidden files-generate-ls-option-togglers %{ evaluate-commands %s
     for opt in $kak_opt_files_togglable_options; do
         echo "\
         define-command files-toggle-$opt %{ evaluate-commands %sh{
-            if [ \"\$kak_opt_$opt\" = true ]; then
+            if [ \"\$kak_opt_files_$opt\" = true ]; then
                 echo files-set-$opt false
             else
                 echo files-set-$opt true
@@ -123,7 +123,6 @@ define-command -hidden files-cd %{
 
 hook global BufSetOption "filetype=%opt{files_browse_buffer}" %{
     add-highlighter buffer/ ref files-filetypes
-    add-highlighter buffer/ ref long-format
     # files-disable-keys
     hook buffer NormalIdle ".*" %{
         info -title %opt{files_browse_buffer} %sh{
