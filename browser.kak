@@ -110,6 +110,7 @@ define-command -hidden files-cd-parent %{ evaluate-commands %sh{
 }}
 
 define-command -hidden files-cd %{
+    # execute-keys <space>
     files-full-path-of-choice
     evaluate-commands %sh{
         target="$kak_reg_r"
@@ -194,8 +195,10 @@ define-command files-full-path-of-choice %{
 }
 
 define-command files-add-entry-to-selection %{ evaluate-commands -draft -save-regs r %{
-    files-full-path-of-choice
-    files-add-to-selection %reg{r}
+    evaluate-commands -itersel %{
+        files-full-path-of-choice
+        files-add-to-selection %reg{r}
+    }
 }}
 
 define-command files-add-cwd-to-selection %{
