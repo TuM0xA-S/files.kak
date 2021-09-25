@@ -9,8 +9,8 @@ declare-option bool files_directories_first true
 declare-option bool files_long_format false
 declare-option str files_sorting "name"
 declare-option bool files_sorting_reverse false
-declare-option str files_ls_options "files_show_hidden files_directories_first files_long_format files_sorting files_sorting_reverse"
-declare-option str files_options_with_getters "files_show_hidden files_directories_first files_long_format files_cwd"
+declare-option str files_options_with_setters "files_show_hidden files_directories_first files_long_format files_sorting files_sorting_reverse"
+declare-option bool files_auto_quoting false
 declare-option str files_togglable_options "files_show_hidden files_directories_first files_long_format"
 declare-option str files_cwd
 declare-option int files_browse_buffer_counter 0
@@ -69,7 +69,7 @@ define-command files-focus-entry -params 1 %{
 }
 
 define-command -hidden files-generate-ls-option-setters %{ evaluate-commands %sh{
-    for opt in $kak_opt_files_ls_options; do
+    for opt in $kak_opt_files_options_with_setters; do
         echo "\
         define-command -params 1 files-set-$opt %{
             set-option buffer $opt %arg{1}
@@ -127,10 +127,10 @@ hook global BufSetOption "filetype=%opt{files_browse_buffer}" %{
     # files-disable-keys
     hook buffer NormalIdle ".*" %{
         info -title %opt{files_browse_buffer} %sh{
-            printf "%-20s\n" "$kak_opt_files_cwd"
+            printf "%-20s\n" "$kak_opt_files_cwd/"
             rp="$(realpath "$kak_opt_files_cwd")"
             if [ "$rp" != "$kak_opt_files_cwd" ]; then
-                echo "realpath: $rp"
+                echo "realpath: $rp/"
             fi
             echo -n "sorting: $kak_opt_files_sorting"
             [  $kak_opt_files_sorting_reverse = "true" ] && echo -n "(rev)"
@@ -177,6 +177,7 @@ define-command files-add-to-selection -params 1 %{ evaluate-commands -draft %{
     execute-keys "i%arg{1}"
     execute-keys %sh{ [ -d "$1" ] && echo "/" }
     execute-keys "<esc>"
+    evaluate-commands %sh{ $kak_opt_files_auto_quoting && echo "execute-keys I'<esc>A'<esc>" }
 }}
 
 define-command files-full-path-of-choice %{
@@ -206,6 +207,16 @@ define-command files-commit-operations %{
     nop %sh{
         eval "$kak_reg_dot"
     }
+}
+
+define-command files-toggle-auto-quoting %{
+    set-option global files_auto_quoting %sh{
+        $kak_opt_files_auto_quoting && echo false || echo true
+    }
+}
+
+define-command files-set-auto-quoting -params 1 %{
+    set-option global files_auto_quoting %arg{1}
 }
 
 files-generate-ls-option-setters
