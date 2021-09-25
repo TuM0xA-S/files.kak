@@ -9,10 +9,11 @@ declare-option bool files_directories_first true
 declare-option bool files_long_format false
 declare-option str files_sorting "name"
 declare-option bool files_sorting_reverse false
-declare-option str files_options_with_setters "show_hidden directories_first long_format sorting sorting_reverse"
+declare-option str files_options_with_setters "show_hidden directories_first long_format sorting_reverse"
 declare-option bool files_auto_quoting false
 declare-option str files_togglable_options "show_hidden directories_first long_format"
 declare-option str files_cwd
+declare-option str files_sorting_opts "none name size time version extension"
 declare-option int files_browse_buffer_counter 0
 declare-option line-specs files_long_format_gutter
 
@@ -22,13 +23,13 @@ define-command -hidden files-ls %{
         '$kak_opt_files_cwd' '$kak_opt_files_show_hidden' '$kak_opt_files_directories_first' '$kak_opt_files_sorting' '$kak_opt_files_sorting_reverse'"
         echo "%%d!$cmd<ret>dgk"
     }
-    evaluate-commands -draft %{
+    evaluate-commands -draft %{ try %{
         execute-keys gjx_
         evaluate-commands %sh{
             echo set-option buffer files_long_format_gutter $kak_timestamp "$kak_selection"
         }
         execute-keys xd
-    }
+    }}
 }
 
 define-command files-new-browser -params 0..1 %{
@@ -110,7 +111,7 @@ define-command -hidden files-cd-parent %{ evaluate-commands %sh{
 }}
 
 define-command -hidden files-cd %{
-    # execute-keys <space>
+    execute-keys <space>
     files-full-path-of-choice
     evaluate-commands %sh{
         target="$kak_reg_r"
@@ -219,6 +220,22 @@ define-command files-toggle-auto-quoting %{
 
 define-command files-set-auto-quoting -params 1 %{
     set-option global files_auto_quoting %arg{1}
+}
+
+define-command files-set-sorting -params 1 \
+-menu -shell-script-candidates %{
+    for e in $kak_opt_files_sorting_opts; do
+        echo $e
+    done
+} %{
+    evaluate-commands %sh{
+        if echo "$kak_opt_files_sorting_opts" | grep -w "$1" > /dev/null; then
+            echo "set-option buffer files_sorting $1"
+            echo "files-redraw-browser"
+        else
+            echo "fail unknown sorting option"
+        fi
+    }
 }
 
 files-generate-ls-option-setters
