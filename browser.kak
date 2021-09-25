@@ -14,29 +14,31 @@ declare-option str files_options_with_getters "files_show_hidden files_directori
 declare-option str files_togglable_options "files_show_hidden files_directories_first files_long_format"
 declare-option str files_cwd
 declare-option int files_browse_buffer_counter 0
+declare-option line-specs files_long_format_gutter
 
 define-command files-ls %{
     execute-keys %sh{
         cmd="$kak_opt_my_plugin_path/nice-ls.sh\
-        '$kak_opt_files_cwd' '$kak_opt_files_show_hidden' '$kak_opt_files_directories_first' '$kak_opt_files_sorting' '$kak_opt_files_sorting_reverse' '$kak_opt_files_long_format'"
+        '$kak_opt_files_cwd' '$kak_opt_files_show_hidden' '$kak_opt_files_directories_first' '$kak_opt_files_sorting' '$kak_opt_files_sorting_reverse'"
         echo "%%d!$cmd<ret>dgk"
+    }
+    evaluate-commands -draft %{
+        execute-keys gjx_
+        evaluate-commands %sh{
+            echo set-option buffer files_long_format_gutter $kak_timestamp "$kak_selection"
+        }
+        execute-keys xd
     }
 }
 
 define-command files-new-browser -params 0..1 %{
     edit -scratch "*%opt{files_browse_buffer}-%opt{files_browse_buffer_counter}*"
-    set buffer filetype %opt{files_browse_buffer}
+    set-option buffer filetype %opt{files_browse_buffer}
     set-option -add global files_browse_buffer_counter 1
     files-set-cwd %sh{
         [ -n "$1" ] && echo "$1" || pwd
     }
 }
-
-define-command -hidden files-disable-keys %{ evaluate-commands %sh{
-    for key in $kak_opt_files_disabled_keys; do
-        echo "map buffer normal $key ''"
-    done
-}}
 
 define-command -hidden files-create-hl %{
     add-highlighter shared/files-filetypes group
@@ -45,7 +47,6 @@ define-command -hidden files-create-hl %{
     add-highlighter shared/files-filetypes/ regex '(?S)^(.*)\|@?$' 1:yellow
     add-highlighter shared/files-filetypes/ regex '(?S)^(.*)=@?$' 1:magenta
     add-highlighter shared/files-filetypes/ regex '@' 0:cyan
-    add-highlighter shared/long-format regex "(?S)^(\S+ +){7}" 0:Default
 }
 
 define-command files-redraw-browser %{
@@ -54,6 +55,12 @@ define-command files-redraw-browser %{
         set-register e %reg{.}
         files-ls
         files-focus-entry %reg{e}
+    }
+    remove-highlighter buffer/long-format
+    evaluate-commands %sh{
+        if [ "$kak_opt_files_long_format" = "true" ]; then
+            echo add-highlighter buffer/long-format flag-lines Default files_long_format_gutter
+        fi
     }
 }
 
@@ -82,12 +89,6 @@ define-command -hidden files-generate-ls-option-togglers %{ evaluate-commands %s
             fi
         }}
         "
-    done
-}}
-
-define-command -hidden files-generate-getters %{ evaluate-commands %sh{
-    for opt in $kak_opt_files_options_with_getters; do
-        echo "define-command files-get-$opt %{ echo '%opt{$opt}' }"
     done
 }}
 
@@ -157,11 +158,6 @@ define-command files-focus-selections %{
 
 define-command files-select-current-entry %{
     execute-keys ";x_"
-    try %{
-        execute-keys "s(\S+ +){7}<ret>"
-        execute-keys "l"
-        execute-keys "<a-l>"
-    }
     execute-keys "s\A[^%opt{files_markers}]+<ret>"
 }
 
