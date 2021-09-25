@@ -65,7 +65,7 @@ define-command files-redraw-browser %{
 }
 
 define-command files-focus-entry -params 1 %{
-    try %{ execute-keys "/\Q%arg{1}\E<ret>gi" }
+    try %{ execute-keys "/^\Q%arg{1}\E[%opt{files_markers}]*$<ret>gi" }
 }
 
 define-command -hidden files-generate-ls-option-setters %{ evaluate-commands %sh{
@@ -93,7 +93,13 @@ define-command -hidden files-generate-ls-option-togglers %{ evaluate-commands %s
 }}
 
 define-command -params 1 files-set-cwd %{
-    set-option buffer files_cwd %arg{1}
+    evaluate-commands %sh{
+        if [ ! -d "$1" ]; then
+            echo fail not a directory
+        fi
+        cd "$1"
+        echo "set-option buffer files_cwd '$(pwd)'"
+    }
     files-ls
 }
 
