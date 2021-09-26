@@ -22,7 +22,7 @@ define-command -hidden files-ls %{
     execute-keys %sh{
         cmd="$kak_opt_files_plugin_path/nice-ls.sh\
         '$kak_opt_files_cwd' '$kak_opt_files_show_hidden' '$kak_opt_files_directories_first' '$kak_opt_files_sorting' '$kak_opt_files_sorting_reverse'"
-        echo "%%d!$cmd<ret>dgk"
+        echo "%%d!$cmd<ret>d"
     }
     evaluate-commands -draft %{ try %{
         execute-keys gjx_
@@ -59,12 +59,19 @@ define-command -hidden files-create-hl %{
     add-highlighter shared/files-filetypes/ regex '@' 0:cyan
 }
 
-define-command files-redraw-browser %{
-    files-select-current-entry
-    evaluate-commands -save-regs e %{
-        set-register e %reg{.}
-        files-ls
-        files-focus-entry %reg{e}
+define-command files-redraw-browser -params 0..1 %{
+    evaluate-commands %sh{
+        if [ "$1" = false ]; then
+            echo "files-ls"
+            echo "execute-keys gk"
+            exit
+        fi
+        echo "files-select-current-entry
+              evaluate-commands -save-regs e %{
+                  set-register e %reg{.}
+                  files-ls
+                  files-focus-entry %reg{e}
+              }"
     }
     remove-highlighter buffer/long-format
     evaluate-commands %sh{
@@ -110,7 +117,7 @@ define-command -params 1 files-set-cwd %{
         cd "$1"
         echo "set-option buffer files_cwd '$(pwd)'"
     }
-    files-ls
+    files-redraw-browser false
 }
 
 define-command -hidden files-cd-parent %{ evaluate-commands %sh{
