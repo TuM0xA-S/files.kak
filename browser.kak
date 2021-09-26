@@ -127,9 +127,10 @@ define-command -hidden files-cd-parent %{ evaluate-commands %sh{
     echo "files-focus-entry '$current_dir'"
 }}
 
-define-command -hidden files-cd %{ evaluate-commands -save-regs rse %{
+define-command -hidden files-cd %{ evaluate-commands -save-regs rsep %{
     set-register s ''
     set-register e ''
+    set-register p ''
     evaluate-commands %sh{
         echo "$kak_selections_length" | grep -v ' ' >/dev/null && echo "set-register s true"
     }
@@ -138,7 +139,6 @@ define-command -hidden files-cd %{ evaluate-commands -save-regs rse %{
             files-full-path-of-choice
         }
         evaluate-commands %sh{
-            echo "$kak_selections_length" >&2
             target="$kak_reg_r"
             can_cd="$kak_reg_s"
             if [ -d "$target" ]; then
@@ -151,10 +151,22 @@ define-command -hidden files-cd %{ evaluate-commands -save-regs rse %{
             fi
         }
     }
+    evaluate-commands -draft %{
+        execute-keys <space>
+        files-full-path-of-choice
+        evaluate-commands %sh{
+            primary="$kak_reg_r"
+            [ -f "$primary" ] && echo "set-register p '$primary'"
+        }
+    }
     evaluate-commands %sh{
-        last_file="$kak_reg_e"
-        [ -n "$last_file" ] &&
-            echo "evaluate-commands -try-client '$kak_opt_files_editor_client' %{ edit '$last_file' }"
+        focus_file="$kak_reg_e"
+        primary="$kak_reg_p"
+        if [ -n "$primary" ]; then
+            focus_file="$primary"
+        fi
+        [ -n "$focus_file" ] &&
+            echo "evaluate-commands -try-client '$kak_opt_files_editor_client' %{ edit '$focus_file' }"
     }
 }}
 
@@ -220,7 +232,7 @@ define-command -hidden files-full-path-of-choice %{
     files-select-current-entry
     evaluate-commands %sh{ 
         cwd="$kak_opt_files_cwd"
-        choice="$kak_reg_dot"
+        choice="$kak_selection"
         if [ "$cwd" != "/" ]; then
             target="$kak_opt_files_cwd/$choice"
         else
