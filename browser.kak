@@ -238,6 +238,14 @@ define-command files-set-sorting -params 1 \
     }
 }
 
+define-command files-select-current-file-in-browser %{
+    evaluate-commands %sh{
+        path="$kak_buffile"
+        echo "files-new-browser '$(dirname $path)'"
+        echo "files-focus-entry '$(basename $path)'"
+    }
+}
+
 files-generate-ls-option-setters
 # files-generate-getters
 files-create-hl
