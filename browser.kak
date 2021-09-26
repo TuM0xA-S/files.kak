@@ -2,20 +2,21 @@ declare-option -hidden str files_plugin_path %sh{ dirname "$kak_source" }
 
 declare-option -hidden str files_browse_buffer 'files-browser'
 declare-option -hidden str files_selection_buffer 'files-selections'
-declare-option str files_markers "*/=>@|"
-declare-option str files_disabled_keys "i I a A r R p P d <a-d> ! <a-!> | <a-|> <gt> <a-gt> <lt> <a-lt>"
-declare-option bool files_show_hidden true
-declare-option bool files_directories_first true
-declare-option bool files_long_format false
-declare-option str files_sorting "name"
-declare-option bool files_sorting_reverse false
-declare-option str files_options_with_setters "show_hidden directories_first long_format sorting_reverse"
-declare-option bool files_auto_quoting false
-declare-option str files_togglable_options "show_hidden directories_first long_format"
-declare-option str files_cwd
-declare-option str files_sorting_opts "none name size time version extension"
-declare-option int files_browse_buffer_counter 0
-declare-option line-specs files_long_format_gutter
+declare-option -hidden str files_markers "*/=>@|"
+declare-option -hidden str files_disabled_keys "i I a A r R p P d <a-d> ! <a-!> | <a-|> <gt> <a-gt> <lt> <a-lt>"
+declare-option -hidden bool files_show_hidden true
+declare-option -hidden bool files_directories_first true
+declare-option -hidden bool files_long_format false
+declare-option -hidden str files_sorting "name"
+declare-option -hidden bool files_sorting_reverse false
+declare-option -hidden str files_sorting_opts "none name size time version extension"
+declare-option -hidden bool files_auto_quoting false
+declare-option -hidden str files_options_with_setters "show_hidden directories_first long_format sorting_reverse"
+declare-option -hidden str files_togglable_options "show_hidden directories_first long_format"
+declare-option -hidden str files_cwd
+declare-option -hidden int files_browse_buffer_counter 0
+declare-option -hidden line-specs files_long_format_gutter
+declare-option -hidden str files_editor_client
 
 define-command -hidden files-ls %{
     execute-keys %sh{
@@ -38,6 +39,14 @@ define-command files-new-browser -params 0..1 %{
     set-option -add global files_browse_buffer_counter 1
     files-set-cwd %sh{
         [ -n "$1" ] && echo "$1" || pwd
+    }
+}
+
+define-command files-new-tied-browser -params 0..1 %{
+    evaluate-commands -draft %sh{
+        echo new
+        echo files-new-browser "$@"
+        echo set-option buffer files_editor_client "$kak_client"
     }
 }
 
@@ -118,7 +127,7 @@ define-command -hidden files-cd %{
         if cd "$target"; then
             echo "files-set-cwd '$PWD'"
         else
-            echo "edit '$target'"
+            echo "evaluate-commands -try-client '$kak_opt_files_editor_client' %{ edit '$target' }"
         fi
     }
 }
