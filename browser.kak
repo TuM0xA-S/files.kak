@@ -127,20 +127,36 @@ define-command -hidden files-cd-parent %{ evaluate-commands %sh{
     echo "files-focus-entry '$current_dir'"
 }}
 
-define-command -hidden files-cd %{
-    evaluate-commands -draft %{
-        execute-keys <space>
-        files-full-path-of-choice
+define-command -hidden files-cd %{ evaluate-commands -save-regs rse %{
+    set-register s ''
+    set-register e ''
+    evaluate-commands %sh{
+        echo "$kak_selections_length" | grep -v ' ' >/dev/null && echo "set-register s true"
+    }
+    evaluate-commands -itersel %{
+        evaluate-commands -draft %{
+            files-full-path-of-choice
+        }
+        evaluate-commands %sh{
+            echo "$kak_selections_length" >&2
+            target="$kak_reg_r"
+            can_cd="$kak_reg_s"
+            if [ -d "$target" ]; then
+                if [ -n "$can_cd" ]; then
+                    echo "files-set-cwd '$target'"
+                fi
+            else
+                echo "evaluate-commands -draft -try-client '$kak_opt_files_editor_client' %{ edit '$target' }"
+                echo "set-register e '$target'"
+            fi
+        }
     }
     evaluate-commands %sh{
-        target="$kak_reg_r"
-        if [ -d "$target" ]; then
-            echo "files-set-cwd '$target'"
-        else
-            echo "evaluate-commands -try-client '$kak_opt_files_editor_client' %{ edit '$target' }"
-        fi
+        last_file="$kak_reg_e"
+        [ -n "$last_file" ] &&
+            echo "evaluate-commands -try-client '$kak_opt_files_editor_client' %{ edit '$last_file' }"
     }
-}
+}}
 
 hook global BufSetOption "filetype=%opt{files_browse_buffer}" %{
     add-highlighter buffer/ ref files-filetypes
