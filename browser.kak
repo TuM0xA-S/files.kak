@@ -24,12 +24,12 @@ define-command -hidden files-ls %{
         '$kak_opt_files_cwd' '$kak_opt_files_show_hidden' '$kak_opt_files_directories_first' '$kak_opt_files_sorting' '$kak_opt_files_sorting_reverse'"
         echo "%%d!$cmd<ret>d"
     }
-    evaluate-commands -draft %{ try %{
+    evaluate-commands %{ try %{
         execute-keys gjx_
         evaluate-commands %sh{
             echo set-option buffer files_long_format_gutter $kak_timestamp "$kak_selection"
         }
-        execute-keys xd
+        execute-keys xdgk
     }}
 }
 
@@ -63,7 +63,6 @@ define-command files-redraw-browser -params 0..1 %{
     evaluate-commands %sh{
         if [ "$1" = false ]; then
             echo "files-ls"
-            echo "execute-keys gk"
             exit
         fi
         echo "files-select-current-entry
@@ -112,9 +111,11 @@ define-command -hidden files-generate-ls-option-togglers %{ evaluate-commands %s
 define-command -params 1 files-set-cwd %{
     evaluate-commands %sh{
         if [ ! -d "$1" ]; then
-            echo fail not a directory
+            echo "fail not a directory"
         fi
-        cd "$1"
+        if ! cd "$1"; then
+            echo "fail can't cd to directory"
+        fi
         echo "set-option buffer files_cwd '$(pwd)'"
     }
     files-redraw-browser false
@@ -127,12 +128,14 @@ define-command -hidden files-cd-parent %{ evaluate-commands %sh{
 }}
 
 define-command -hidden files-cd %{
-    execute-keys <space>
-    files-full-path-of-choice
+    evaluate-commands -draft %{
+        execute-keys <space>
+        files-full-path-of-choice
+    }
     evaluate-commands %sh{
         target="$kak_reg_r"
-        if cd "$target"; then
-            echo "files-set-cwd '$PWD'"
+        if [ -d "$target" ]; then
+            echo "files-set-cwd '$target'"
         else
             echo "evaluate-commands -try-client '$kak_opt_files_editor_client' %{ edit '$target' }"
         fi
