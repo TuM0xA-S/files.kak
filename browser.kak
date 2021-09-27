@@ -127,11 +127,10 @@ define-command -hidden files-cd-parent %{ evaluate-commands %sh{
     echo "files-focus-entry '$current_dir'"
 }}
 
-define-command -hidden files-cd %{ evaluate-commands -save-regs rsepc %{
+define-command -hidden files-cd %{ evaluate-commands -save-regs rsep %{ try %{
     set-register s ''
     set-register e ''
     set-register p ''
-    set-register c ''
     evaluate-commands %sh{
         echo "$kak_selections_length" | grep -v ' ' >/dev/null && echo "set-register s true"
     }
@@ -145,7 +144,7 @@ define-command -hidden files-cd %{ evaluate-commands -save-regs rsepc %{
             if [ -d "$target" ]; then
                 if [ -n "$can_cd" ]; then
                     echo "files-set-cwd '$target'"
-                    echo "set-register c true"
+                    echo "fail found dir"
                 fi
             else
                 echo "evaluate-commands -draft -try-client '$kak_opt_files_editor_client' %{ edit '$target' }"
@@ -157,11 +156,8 @@ define-command -hidden files-cd %{ evaluate-commands -save-regs rsepc %{
         execute-keys <space>
         files-full-path-of-choice
         evaluate-commands %sh{
-            was_cd="$kak_reg_c"
-            if [ -z "$was_cd" ]; then
-                primary="$kak_reg_r"
-                [ -f "$primary" ] && echo "set-register p '$primary'"
-            fi 
+            primary="$kak_reg_r"
+            [ -f "$primary" ] && echo "set-register p '$primary'"
         }
     }
     evaluate-commands %sh{
@@ -171,9 +167,18 @@ define-command -hidden files-cd %{ evaluate-commands -save-regs rsepc %{
             focus_file="$primary"
         fi
         [ -n "$focus_file" ] &&
-            echo "evaluate-commands -try-client '$kak_opt_files_editor_client' %{ edit '$focus_file' }"
+            echo "evaluate-commands -try-client '$kak_opt_files_editor_client' %{ edit '$focus_file' }" &&
+            echo "fail opening file"
     }
-}}
+    evaluate-commands %{
+        execute-keys <space>
+        files-full-path-of-choice
+        evaluate-commands %sh{
+            primary="$kak_reg_r"
+            echo "files-set-cwd '$primary'"
+        }
+    }
+}}}
 
 hook global BufSetOption "filetype=%opt{files_browse_buffer}" %{
     add-highlighter buffer/ ref files-filetypes
