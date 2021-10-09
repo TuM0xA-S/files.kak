@@ -185,7 +185,7 @@ hook global BufSetOption "filetype=%opt{files_browse_buffer}" %{
     # files-disable-keys
     hook buffer NormalIdle ".*" %{
         info -title %opt{files_browse_buffer} %sh{
-            printf "%-20s\n" "$kak_opt_files_cwd/"
+            printf "%-20s\n" "$kak_opt_files_cwd$([ "$kak_opt_files_cwd" != "/" ] && echo "/" )"
             rp="$(realpath "$kak_opt_files_cwd")"
             if [ "$rp" != "$kak_opt_files_cwd" ]; then
                 echo "realpath: $rp/"
