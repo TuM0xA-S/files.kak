@@ -10,7 +10,8 @@ declare-option -hidden bool files_long_format false
 declare-option -hidden str files_sorting "name"
 declare-option -hidden bool files_sorting_reverse false
 declare-option -hidden str files_sorting_opts "none name size time version extension"
-declare-option -hidden bool files_auto_quoting false
+declare-option -hidden str files_selection_quoting "backslash"
+declare-option -hidden str files_quoting_opts "none backslash quotes double_quotes"
 declare-option -hidden str files_options_with_setters "show_hidden directories_first long_format sorting_reverse"
 declare-option -hidden str files_togglable_options "show_hidden directories_first long_format"
 declare-option -hidden str files_cwd
@@ -239,10 +240,24 @@ define-command -hidden files-add-to-selection -params 1 %{ evaluate-commands -dr
         execute-keys "x<a-k>^.+$<ret>"
         execute-keys "o<esc>"
     }
-    execute-keys "i%arg{1}"
-    execute-keys %sh{ [ -d "$1" ] && echo "/" }
-    execute-keys "<esc>"
-    evaluate-commands %sh{ $kak_opt_files_auto_quoting && echo "execute-keys I'<esc>A'<esc>" }
+    evaluate-commands %sh{
+        sel="$1"
+        if [ -d "$sel" ]; then
+            sel="$sel/"
+        fi
+        case "$kak_opt_files_selection_quoting" in
+            "quotes")
+                sel="'$sel'"
+            ;;
+            "double_quotes")
+                sel="\"$sel\""
+            ;;
+            "backslash")
+                sel="$(echo "$sel" | sed -E 's_[[:space:]]|\$|\*|\||\\|~|\(|\)|\{|\}|"|'\''_\\&_g')"
+            ;;
+        esac
+        echo execute-keys "%{i$sel<esc>}"
+    }
 }}
 
 define-command -hidden files-full-path-of-choice %{
@@ -276,16 +291,6 @@ define-command files-commit-operations %{
     }
 }
 
-define-command files-toggle-auto-quoting %{
-    set-option global files_auto_quoting %sh{
-        $kak_opt_files_auto_quoting && echo false || echo true
-    }
-}
-
-define-command files-set-auto-quoting -params 1 %{
-    set-option global files_auto_quoting %arg{1}
-}
-
 define-command files-set-sorting -params 1 \
 -menu -shell-script-candidates %{
     for e in $kak_opt_files_sorting_opts; do
@@ -298,6 +303,21 @@ define-command files-set-sorting -params 1 \
             echo "files-redraw-browser"
         else
             echo "fail unknown sorting option"
+        fi
+    }
+}
+
+define-command files-set-selection-quoting -params 1 \
+-menu -shell-script-candidates %{
+    for e in $kak_opt_files_quoting_opts; do
+        echo $e
+    done
+} %{
+    evaluate-commands %sh{
+        if echo "$kak_opt_files_quoting_opts" | grep -w "$1" > /dev/null; then
+            echo "set-option global files_selection_quoting $1"
+        else
+            echo "fail unknown quoting option"
         fi
     }
 }
