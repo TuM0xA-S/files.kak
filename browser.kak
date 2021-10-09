@@ -220,6 +220,10 @@ define-command files-focus-selections %{
     edit -scratch "*%opt{files_selection_buffer}*"
 }
 
+hook global BufCreate "\*%opt{files_selection_buffer}\*" %{
+    set-option buffer filetype %opt{files_selection_buffer}
+}
+
 define-command -hidden files-select-current-entry %{
     execute-keys ";xH"
     try %{
