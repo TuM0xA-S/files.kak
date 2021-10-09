@@ -56,7 +56,7 @@ define-command -hidden files-create-hl %{
     add-highlighter shared/files-filetypes/ regex '(?S)^(.*)\*@?$' 1:green
     add-highlighter shared/files-filetypes/ regex '(?S)^(.*)\|@?$' 1:yellow
     add-highlighter shared/files-filetypes/ regex '(?S)^(.*)=@?$' 1:magenta
-    add-highlighter shared/files-filetypes/ regex '@' 0:cyan
+    add-highlighter shared/files-filetypes/ regex '@$' 0:cyan
 }
 
 define-command files-redraw-browser -params 0..1 %{
@@ -221,8 +221,11 @@ define-command files-focus-selections %{
 }
 
 define-command -hidden files-select-current-entry %{
-    execute-keys ";x_"
-    execute-keys "s\A[^%opt{files_markers}]+<ret>"
+    execute-keys ";xH"
+    try %{
+        execute-keys "s[%opt{files_markers}]+$<ret>"
+        execute-keys "<a-;>h<a-h>"
+    }
 }
 
 define-command -hidden files-add-to-selection -params 1 %{ evaluate-commands -draft %{
