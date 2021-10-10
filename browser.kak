@@ -34,7 +34,7 @@ define-command -hidden files-ls %{
     }}
 }
 
-define-command files-new-browser -params 0..1 %{
+define-command -docstring 'create new filebrowser in kakoune buffer' files-new-browser -params 0..1 %{
     edit -scratch "*%opt{files_browse_buffer}-%opt{files_browse_buffer_counter}*"
     set-option buffer filetype %opt{files_browse_buffer}
     set-option -add global files_browse_buffer_counter 1
@@ -43,7 +43,7 @@ define-command files-new-browser -params 0..1 %{
     }
 }
 
-define-command files-new-tied-browser -params 0..1 %{
+define-command -docstring 'create new filebrowser opening files in current client' files-new-tied-browser -params 0..1 %{
     evaluate-commands -draft %sh{
         echo new
         echo files-new-browser "$@"
@@ -60,7 +60,7 @@ define-command -hidden files-create-hl %{
     add-highlighter shared/files-filetypes/ regex '@$' 0:cyan
 }
 
-define-command files-redraw-browser -params 0..1 %{
+define-command -docstring 'manually redraw filebrowser buffer' files-redraw-browser -params 0..1 %{
     evaluate-commands %sh{
         if [ "$1" = false ]; then
             echo "files-ls"
@@ -109,7 +109,7 @@ define-command -hidden files-generate-ls-option-togglers %{ evaluate-commands %s
     done
 }}
 
-define-command -params 1 files-set-cwd %{
+define-command -docstring 'set browser cwd' files-set-cwd -params 1 %{
     evaluate-commands %sh{
         if [ ! -d "$1" ]; then
             echo "fail not a directory"
@@ -122,13 +122,16 @@ define-command -params 1 files-set-cwd %{
     files-redraw-browser false
 }
 
-define-command -hidden files-cd-parent %{ evaluate-commands %sh{
+define-command -docstring 'go up in hierarchy' files-cd-parent %{ evaluate-commands %sh{
     current_dir="$(basename "$kak_opt_files_cwd")"
     echo "files-set-cwd '$(dirname "$kak_opt_files_cwd")'"
     echo "files-focus-entry '$current_dir'"
 }}
 
-define-command -hidden files-cd %{ evaluate-commands -save-regs rsep %{ try %{
+define-command -docstring %{
+    cd or open file
+    supports batching, you can open multiple files
+} files-cd %{ evaluate-commands -save-regs rsep %{ try %{
     set-register s ''
     set-register e ''
     set-register p ''
@@ -205,19 +208,19 @@ hook global BufSetOption "filetype=%opt{files_browse_buffer}" %{
     }
 }
 
-define-command files-cd-browser-to-realpath %{
+define-command -docstring 'change filebrowser path to realpath' files-cd-browser-to-realpath %{
     set-option buffer files_cwd %sh{echo "$(realpath "$kak_opt_files_cwd")"}
 }
 
-define-command files-cd-server-to-browser %{
+define-command -docstring 'change server cwd to current filebrowser path' files-cd-server-to-browser %{
     change-directory %opt{files_cwd} 
 }
 
-define-command files-cd-browser-to-server %{
+define-command -docstring 'change filebrowser path to session pwd' files-cd-browser-to-server %{
     files-set-cwd %sh{pwd}
 }
 
-define-command files-focus-selections %{
+define-command -docstring 'goto selections buffer' files-focus-selections %{
     edit -scratch "*%opt{files_selection_buffer}*"
 }
 
@@ -242,7 +245,7 @@ define-command -hidden files-add-to-selection -params 1 %{ evaluate-commands -dr
     }
     evaluate-commands %sh{
         sel="$1"
-        if [ -d "$sel" ]; then
+        if [ -d "$sel" ] && [ "$sel" != "/" ]; then
             sel="$sel/"
         fi
         case "$kak_opt_files_selection_quoting" in
@@ -274,24 +277,33 @@ define-command -hidden files-full-path-of-choice %{
     }
 }
 
-define-command files-add-entry-to-selection %{ evaluate-commands -draft -save-regs r %{
+define-command -docstring %{
+    add entry under cursor to selections buffer
+    supports batching, all lines with cursor will be added
+    can do auto quoting
+} files-add-entry-to-selection %{ evaluate-commands -draft -save-regs r %{
     evaluate-commands -itersel %{
         files-full-path-of-choice
         files-add-to-selection %reg{r}
     }
 }}
 
-define-command files-add-cwd-to-selection %{
+define-command -docstring 'add cwd to selections buffer' files-add-cwd-to-selection %{
     files-add-to-selection %opt{files_cwd}
 }
 
-define-command files-commit-operations %{
+define-command -docstring 'apply selected commands from selections buffer' files-commit-operations %{
     nop %sh{
         eval "$kak_reg_dot"
     }
 }
 
-define-command files-set-sorting -params 1 \
+define-command -docstring %sh{
+    echo set sorting
+    echo options: $kak_opt_files_sorting_opts
+    echo default: $kak_opt_files_sorting
+    echo can be reversed
+} files-set-sorting -params 1 \
 -menu -shell-script-candidates %{
     for e in $kak_opt_files_sorting_opts; do
         echo $e
@@ -307,7 +319,11 @@ define-command files-set-sorting -params 1 \
     }
 }
 
-define-command files-set-selection-quoting -params 1 \
+define-command -docstring %sh{
+    echo set quoting
+    echo options: $kak_opt_files_quoting_opts
+    echo default: $kak_opt_files_selection_quoting
+} files-set-selection-quoting -params 1 \
 -menu -shell-script-candidates %{
     for e in $kak_opt_files_quoting_opts; do
         echo $e
@@ -322,13 +338,31 @@ define-command files-set-selection-quoting -params 1 \
     }
 }
 
-define-command files-select-current-file-in-browser %{
+define-command -docstring 'create filebrowser with cursor on current file' files-open-file-in-browser %{
     evaluate-commands %sh{
         path="$kak_buffile"
-        echo "files-new-browser '$(dirname $path)'"
-        echo "files-focus-entry '$(basename $path)'"
+        echo "files-new-browser '$(dirname "$path")'"
+        echo "files-focus-entry '$(basename "$path")'"
     }
 }
+
+define-command -docstring 'create tied filebrowser with cursor on current file' files-open-file-in-tied-browser %{
+    evaluate-commands -draft %sh{
+        path="$kak_buffile"
+        echo new %\{ \
+            files-new-browser "'$(dirname "$path")'"\; \
+            set-option buffer files_editor_client "$kak_client"\; \
+            files-focus-entry "'$(basename "$path")'"\; \
+        \}
+    }
+}
+
+define-command -docstring 'spawn terminal in filesbrowser cwd(using kcr)' files-open-in-terminal %{ evaluate-commands -save-regs a %{
+    set-register e %sh{pwd}
+    files-cd-server-to-browser
+    connect-terminal
+    change-directory %reg{e}
+}}
 
 files-generate-ls-option-setters
 # files-generate-getters
