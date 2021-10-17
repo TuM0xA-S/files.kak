@@ -292,12 +292,6 @@ define-command -docstring 'add cwd to selections buffer' files-add-cwd-to-select
     files-add-to-selection %opt{files_cwd}
 }
 
-define-command -docstring 'apply selected commands from selections buffer' files-commit-operations %{
-    nop %sh{
-        eval "$kak_reg_dot"
-    }
-}
-
 define-command -docstring %sh{
     echo set sorting
     echo options: $kak_opt_files_sorting_opts
